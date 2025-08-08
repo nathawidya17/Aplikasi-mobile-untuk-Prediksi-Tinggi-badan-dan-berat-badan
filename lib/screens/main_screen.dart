@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
-import 'about_screen.dart'; // Impor halaman tentang
+import 'about_screen.dart';
+import 'history_screen.dart'; // 1. Impor halaman history
+import '../models/calculation_history.dart'; // 2. Impor model data
 
 class MainScreen extends StatefulWidget {
-  // Menambahkan const di constructor
   const MainScreen({super.key});
 
   @override
@@ -10,47 +11,53 @@ class MainScreen extends StatefulWidget {
 }
 
 class _MainScreenState extends State<MainScreen> {
-  // Variabel untuk menyimpan data input dan hasil
-  String? _selectedGender; // L untuk Laki-laki, P untuk Perempuan
+  String? _selectedGender;
   final _panjangLenganController = TextEditingController();
   final _lilaController = TextEditingController();
 
   double? _hasilTinggiBadan;
   double? _hasilBeratBadan;
 
-  // GlobalKey untuk validasi form
   final _formKey = GlobalKey<FormState>();
 
+  // 3. Buat list untuk menyimpan riwayat
+  final List<CalculationHistory> _historyList = [];
+
   void _hitungEstimasi() {
-    // Validasi form sebelum menghitung
     if (_formKey.currentState!.validate()) {
-      // Ambil nilai dari input controller
       double panjangLengan =
           double.tryParse(_panjangLenganController.text) ?? 0;
       double lila = double.tryParse(_lilaController.text) ?? 0;
       double tinggiBadan = 0;
       double beratBadan = 0;
 
-      // Logika perhitungan berdasarkan rumus
       if (_selectedGender == 'L') {
-        // Rumus Laki-laki
         tinggiBadan = 97.252 + (2.645 * panjangLengan);
         beratBadan = -93.2 + (3.29 * lila) + (0.43 * tinggiBadan);
       } else if (_selectedGender == 'P') {
-        // Rumus Perempuan
         tinggiBadan = 68.777 + (3.536 * panjangLengan);
         beratBadan = -64.6 + (2.15 * lila) + (0.54 * tinggiBadan);
       }
 
-      // Perbarui state untuk menampilkan hasil di UI
+      // 4. Buat entri baru dan tambahkan ke list riwayat
+      final newHistoryEntry = CalculationHistory(
+        gender: _selectedGender == 'L' ? 'Laki-laki' : 'Perempuan',
+        panjangLengan: panjangLengan,
+        lila: lila,
+        tinggiBadan: tinggiBadan,
+        beratBadan: beratBadan,
+        timestamp: DateTime.now(),
+      );
+
       setState(() {
         _hasilTinggiBadan = tinggiBadan;
         _hasilBeratBadan = beratBadan;
+        _historyList.insert(
+            0, newHistoryEntry); // Masukkan ke posisi paling atas
       });
     }
   }
 
-  // Hapus controller saat widget tidak digunakan untuk membebaskan memori
   @override
   void dispose() {
     _panjangLenganController.dispose();
@@ -66,13 +73,26 @@ class _MainScreenState extends State<MainScreen> {
         title: Row(
           children: [
             Image.asset(
-              'assets/images/D-estima.png', // Nama file logo diperbaiki
+              'assets/images/D-Estima.png',
               height: 30,
             ),
             const SizedBox(width: 10),
+            const Text('D-Estima'),
           ],
         ),
         actions: [
+          // 5. Tambahkan tombol untuk membuka halaman history
+          IconButton(
+            icon: const Icon(Icons.history),
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) =>
+                      HistoryScreen(historyList: _historyList),
+                ),
+              );
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.info_outline),
             onPressed: () {
@@ -90,6 +110,7 @@ class _MainScreenState extends State<MainScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              // ... (Sisa kode form input tidak berubah, jadi saya persingkat)
               DropdownButtonFormField<String>(
                 value: _selectedGender,
                 hint: const Text('Pilih Jenis Kelamin'),
@@ -113,7 +134,7 @@ class _MainScreenState extends State<MainScreen> {
               TextFormField(
                 controller: _panjangLenganController,
                 decoration: const InputDecoration(
-                  labelText: 'Panjang Lengan (Ulna)',
+                  labelText: 'Panjang Lengan ()',
                   hintText: 'Masukkan dalam cm',
                   border: OutlineInputBorder(),
                   prefixIcon: Icon(Icons.straighten),
