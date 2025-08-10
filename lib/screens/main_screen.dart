@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'about_screen.dart';
-import 'history_screen.dart'; // 1. Impor halaman history
-import '../models/calculation_history.dart'; // 2. Impor model data
+import 'history_screen.dart';
+import '../models/calculation_history.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -19,15 +19,24 @@ class _MainScreenState extends State<MainScreen> {
   double? _hasilBeratBadan;
 
   final _formKey = GlobalKey<FormState>();
-
-  // 3. Buat list untuk menyimpan riwayat
   final List<CalculationHistory> _historyList = [];
+
+  @override
+  void dispose() {
+    _panjangLenganController.dispose();
+    _lilaController.dispose();
+    super.dispose();
+  }
 
   void _hitungEstimasi() {
     if (_formKey.currentState!.validate()) {
-      double panjangLengan =
-          double.tryParse(_panjangLenganController.text) ?? 0;
-      double lila = double.tryParse(_lilaController.text) ?? 0;
+      // Menggunakan replaceAll untuk memastikan input koma juga diterima
+      final panjangLengan =
+          double.tryParse(_panjangLenganController.text.replaceAll(',', '.')) ??
+              0;
+      final lila =
+          double.tryParse(_lilaController.text.replaceAll(',', '.')) ?? 0;
+
       double tinggiBadan = 0;
       double beratBadan = 0;
 
@@ -39,7 +48,6 @@ class _MainScreenState extends State<MainScreen> {
         beratBadan = -64.6 + (2.15 * lila) + (0.54 * tinggiBadan);
       }
 
-      // 4. Buat entri baru dan tambahkan ke list riwayat
       final newHistoryEntry = CalculationHistory(
         gender: _selectedGender == 'L' ? 'Laki-laki' : 'Perempuan',
         panjangLengan: panjangLengan,
@@ -52,165 +60,278 @@ class _MainScreenState extends State<MainScreen> {
       setState(() {
         _hasilTinggiBadan = tinggiBadan;
         _hasilBeratBadan = beratBadan;
-        _historyList.insert(
-            0, newHistoryEntry); // Masukkan ke posisi paling atas
+        _historyList.insert(0, newHistoryEntry);
       });
+      // Menutup keyboard setelah menghitung untuk pengalaman pengguna yang lebih baik
+      FocusScope.of(context).unfocus();
     }
   }
 
-  @override
-  void dispose() {
-    _panjangLenganController.dispose();
-    _lilaController.dispose();
-    super.dispose();
+  void _resetForm() {
+    setState(() {
+      _formKey.currentState?.reset();
+      _selectedGender = null;
+      _panjangLenganController.clear();
+      _lilaController.clear();
+      _hasilTinggiBadan = null;
+      _hasilBeratBadan = null;
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFF0C0013),
       appBar: AppBar(
-        backgroundColor: Colors.blue[800],
-        title: Row(
-          children: [
-            Image.asset(
-              'assets/images/D-Estima.png',
-              height: 30,
-            ),
-            const SizedBox(width: 10),
-            const Text('D-Estima'),
-          ],
+        backgroundColor: const Color(0xFF0C0013),
+        elevation: 0,
+        title: Image.asset(
+          'assets/images/D-Estima1.png',
+          height: 40,
         ),
-        actions: [
-          // 5. Tambahkan tombol untuk membuka halaman history
-          IconButton(
-            icon: const Icon(Icons.history),
-            onPressed: () {
-              Navigator.of(context).push(
+        centerTitle: true,
+      ),
+      drawer: Drawer(
+        backgroundColor: const Color(0xFF0B0014),
+        child: Column(
+          children: [
+            AppBar(
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+              automaticallyImplyLeading:
+                  false, // Menghilangkan tombol back di drawer
+              title: const Text("Menu", style: TextStyle(color: Colors.white)),
+            ),
+            _buildMenuItem(context, "Kalkulator", Icons.calculate, () {
+              Navigator.pop(context); // Cukup tutup drawer
+            }),
+            const Divider(color: Colors.white54, thickness: 0.5),
+            _buildMenuItem(context, "Riwayat", Icons.history, () {
+              Navigator.pop(context); // Tutup drawer dulu
+              Navigator.push(
+                context,
                 MaterialPageRoute(
-                  builder: (context) =>
-                      HistoryScreen(historyList: _historyList),
+                  // FIX: Mengirim list riwayat yang benar
+                  builder: (_) => HistoryScreen(historyList: _historyList),
                 ),
               );
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.info_outline),
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (context) => const AboutScreen()),
+            }),
+            const Divider(color: Colors.white54, thickness: 0.5),
+            _buildMenuItem(context, "Tentang Aplikasi", Icons.info, () {
+              Navigator.pop(context); // Tutup drawer dulu
+              Navigator.push(
+                context,
+                // FIX: AboutScreen tidak memerlukan historyList
+                MaterialPageRoute(builder: (_) => const AboutScreen()),
               );
-            },
-          ),
-        ],
+            }),
+            const Divider(color: Colors.white54, thickness: 0.5),
+          ],
+        ),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Form(
           key: _formKey,
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // ... (Sisa kode form input tidak berubah, jadi saya persingkat)
-              DropdownButtonFormField<String>(
-                value: _selectedGender,
-                hint: const Text('Pilih Jenis Kelamin'),
-                decoration: const InputDecoration(
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.person),
-                ),
-                items: const [
-                  DropdownMenuItem(value: 'L', child: Text('Laki-laki')),
-                  DropdownMenuItem(value: 'P', child: Text('Perempuan')),
-                ],
-                onChanged: (value) {
-                  setState(() {
-                    _selectedGender = value;
-                  });
-                },
-                validator: (value) =>
-                    value == null ? 'Jenis kelamin harus diisi' : null,
-              ),
+              const Text("KALKULATOR",
+                  style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold)),
+              const Divider(color: Colors.white),
+              const SizedBox(height: 12),
+              _buildDropdownGender(),
               const SizedBox(height: 16),
-              TextFormField(
+              _buildTextField(
                 controller: _panjangLenganController,
-                decoration: const InputDecoration(
-                  labelText: 'Panjang Lengan ()',
-                  hintText: 'Masukkan dalam cm',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.straighten),
-                ),
-                keyboardType: TextInputType.number,
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Panjang lengan harus diisi';
-                  }
-                  return null;
-                },
+                label: "Panjang Lengan (ULNA)",
+                hint: "contoh: 25 atau 26.5",
               ),
               const SizedBox(height: 16),
-              TextFormField(
+              _buildTextField(
                 controller: _lilaController,
-                decoration: const InputDecoration(
-                  labelText: 'Lingkar Lengan Atas (LILA)',
-                  hintText: 'Masukkan dalam cm',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.donut_small),
-                ),
-                keyboardType: TextInputType.number,
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'LILA harus diisi';
-                  }
-                  return null;
-                },
+                label: "Lingkar Lengan Atas (LILA)",
+                hint: "contoh: 28 atau 29.5",
               ),
               const SizedBox(height: 24),
-              ElevatedButton(
-                onPressed: _hitungEstimasi,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.orange[700],
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                ),
-                child: const Text('Hitung', style: TextStyle(fontSize: 18)),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  _buildButton("Hitung", _hitungEstimasi),
+                  const SizedBox(width: 12),
+                  // Tombol reset akan muncul jika ada input atau hasil
+                  if (_panjangLenganController.text.isNotEmpty ||
+                      _hasilTinggiBadan != null)
+                    _buildButton("Reset", _resetForm),
+                ],
               ),
               const SizedBox(height: 24),
               if (_hasilTinggiBadan != null && _hasilBeratBadan != null)
-                Card(
-                  elevation: 4,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Hasil Estimasi',
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.blue[800],
-                          ),
-                        ),
-                        const Divider(height: 20, thickness: 1),
-                        Text(
-                          'Tinggi Badan: ${_hasilTinggiBadan!.toStringAsFixed(2)} cm',
-                          style: const TextStyle(fontSize: 18),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Berat Badan: ${_hasilBeratBadan!.toStringAsFixed(2)} kg',
-                          style: const TextStyle(fontSize: 18),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
+                _buildResultBox(),
             ],
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildMenuItem(
+      BuildContext context, String title, IconData icon, VoidCallback? onTap) {
+    return ListTile(
+      leading: Icon(icon, color: Colors.white),
+      title: Text(title, style: const TextStyle(color: Colors.white)),
+      onTap: onTap,
+    );
+  }
+
+  Widget _buildDropdownGender() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text("Pilih Jenis Kelamin",
+            style: TextStyle(
+                color: Colors.white,
+                fontSize: 14,
+                fontWeight: FontWeight.w500)),
+        const SizedBox(height: 6),
+        DropdownButtonFormField<String>(
+          dropdownColor: const Color(0xFF1E0A2A),
+          value: _selectedGender,
+          icon: const Icon(Icons.arrow_drop_down, color: Colors.white),
+          hint: const Text('Pria/Wanita',
+              style: TextStyle(color: Colors.white70)),
+          decoration: _inputDecoration(),
+          items: const [
+            DropdownMenuItem(
+                value: 'L',
+                child: Text('Pria', style: TextStyle(color: Colors.white))),
+            DropdownMenuItem(
+                value: 'P',
+                child: Text('Wanita', style: TextStyle(color: Colors.white))),
+          ],
+          onChanged: (value) => setState(() => _selectedGender = value),
+          validator: (value) =>
+              value == null ? 'Jenis kelamin harus diisi' : null,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String label,
+    required String hint,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label,
+            style: const TextStyle(
+                color: Colors.white,
+                fontSize: 14,
+                fontWeight: FontWeight.w500)),
+        const SizedBox(height: 6),
+        TextFormField(
+          style: const TextStyle(color: Colors.white),
+          controller: controller,
+          decoration: _inputDecoration().copyWith(
+            hintText: hint,
+            hintStyle: const TextStyle(color: Colors.white54, fontSize: 13),
+          ),
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          validator: (value) {
+            if (value == null || value.isEmpty) {
+              return '$label harus diisi';
+            }
+            if (double.tryParse(value.replaceAll(',', '.')) == null) {
+              return 'Masukkan angka yang valid';
+            }
+            return null;
+          },
+        ),
+      ],
+    );
+  }
+
+  InputDecoration _inputDecoration() {
+    return InputDecoration(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(10),
+        borderSide: const BorderSide(color: Colors.white54),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(10),
+        borderSide: const BorderSide(color: Colors.white, width: 1.5),
+      ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(10),
+        borderSide: const BorderSide(color: Colors.redAccent, width: 1),
+      ),
+      focusedErrorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(10),
+        borderSide: const BorderSide(color: Colors.redAccent, width: 1.5),
+      ),
+    );
+  }
+
+  Widget _buildButton(String text, VoidCallback onPressed) {
+    return ElevatedButton(
+      onPressed: onPressed,
+      style: ElevatedButton.styleFrom(
+          backgroundColor:
+              text == "Reset" ? Colors.transparent : const Color(0xFF6A1B9A),
+          foregroundColor: Colors.white,
+          side: text == "Reset"
+              ? const BorderSide(color: Colors.white54)
+              : BorderSide.none,
+          padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 12),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+      child: Text(text, style: const TextStyle(fontSize: 16)),
+    );
+  }
+
+  Widget _buildResultBox() {
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFF1E0A2A),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        children: [
+          const Text("Hasil Estimasi",
+              style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold)),
+          const SizedBox(height: 12),
+          _buildResultRow(
+              "Tinggi Badan", "${_hasilTinggiBadan!.toStringAsFixed(2)} cm"),
+          const SizedBox(height: 8),
+          _buildResultRow(
+              "Berat Badan", "${_hasilBeratBadan!.toStringAsFixed(2)} kg"),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildResultRow(String label, String value) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text("$label :",
+            style: const TextStyle(color: Colors.white70, fontSize: 16)),
+        Text(value,
+            style: const TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.bold)),
+      ],
     );
   }
 }

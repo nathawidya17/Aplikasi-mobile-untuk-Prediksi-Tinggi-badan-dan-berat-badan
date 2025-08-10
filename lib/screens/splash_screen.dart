@@ -23,13 +23,13 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFF0C0013),
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Image.asset(
-              'assets/images/D-Estima.png', 
+              'assets/images/D-Estima1.png', 
               width: 150,
               height: 150,
             ),
@@ -46,7 +46,7 @@ class _SplashScreenState extends State<SplashScreen> {
               'Digital Estimator Berat dan Tinggi Badan',
               style: TextStyle(
                 fontSize: 14,
-                color: Color(0xFF757575), 
+                color: Color(0xFFFFFFFF), 
               ),
             ),
           ],
